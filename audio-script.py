@@ -2,30 +2,30 @@ import os
 import shutil
 import subprocess
 import argparse
-from typing import List, Tuple
-from tqdm import tqdm  # Provides rich progress bars
+from typing import List, Tuple  # Type hints for better code clarity
+from tqdm import tqdm  # Rich progress bar library for a more polished UI
 import datetime
 import json
 from pathlib import Path
 import sys
 
-# Define supported audio file extensions
+# Supported audio file extensions
 AUDIO_EXTENSIONS = ['.flac', '.wav', '.m4a', '.mp3', '.ogg', '.opus', '.ape', '.wv', '.wma']
 
 def directory_path(path: str) -> str:
-    """Validates a directory path for argparse."""
+    """Validates that a path is a directory."""
     if os.path.isdir(path):
         return path
     raise argparse.ArgumentTypeError(f"'{path}' is not a directory")
 
 def path_type(path: str) -> str:
-    """Validates an existing path for argparse."""
+    """Validates that a path exists."""
     if os.path.exists(path):
         return path
     raise argparse.ArgumentTypeError(f"'{path}' does not exist")
 
 def get_audio_files(directory: str) -> List[str]:
-    """Finds audio files recursively in a directory."""
+    """Recursively finds audio files in a directory."""
     audio_files = []
     for root, _, files in os.walk(directory):
         for file in files:
@@ -34,7 +34,7 @@ def get_audio_files(directory: str) -> List[str]:
     return audio_files
 
 def check_file_integrity(file_path: str) -> Tuple[str, str]:
-    """Checks audio file integrity with FFmpeg."""
+    """Checks audio file integrity using FFmpeg."""
     try:
         result = subprocess.run(
             ['ffmpeg', '-v', 'error', '-i', file_path, '-f', 'null', '-'],
@@ -45,7 +45,7 @@ def check_file_integrity(file_path: str) -> Tuple[str, str]:
         return ("FAILED", str(e))
 
 def check_integrity(path: str, verbose: bool = False, save_log: bool = True):
-    """Verifies audio file integrity."""
+    """Verifies audio file integrity with progress tracking."""
     if not shutil.which('ffmpeg'):
         print("Error: FFmpeg is not installed or not in your PATH.")
         return
@@ -62,12 +62,13 @@ def check_integrity(path: str, verbose: bool = False, save_log: bool = True):
         return
 
     log_file = None
-    if save_log:  # Log by default unless explicitly disabled
+    if save_log:  # Logging is on by default unless explicitly disabled
         log_filename = f"integrity_check_log_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
         log_file = open(log_filename, 'w', encoding='utf-8')
 
     passed_count = 0
     failed_count = 0
+    # Use tqdm for progress bar if not verbose, otherwise just iterate
     file_iterator = audio_files if verbose else tqdm(audio_files, desc="Checking files")
 
     for file_path in file_iterator:
@@ -109,20 +110,21 @@ def rename_cover_art(file_path: str, hide: bool):
             os.rename(file_path, new_name)
 
 def process_cover_art(path: str, hide: bool):
-    """Processes cover art files with progress."""
+    """Processes cover art files with tqdm progress bar."""
     total_files = sum(len(files) for _, _, files in os.walk(path))
     if total_files == 0:
         print(f"No files found in '{path}' to process.")
         return
 
+    # Use tqdm as a context manager for progress tracking
     with tqdm(total=total_files, desc="Processing cover art") as progress:
         for root, _, files in os.walk(path):
             for file in files:
                 rename_cover_art(os.path.join(root, file), hide)
-                progress.update(1)
+                progress.update(1)  # Update progress bar manually
 
 def analyze_audio(path: str, output_stream, show_progress: bool = True):
-    """Analyzes audio metadata."""
+    """Analyzes audio metadata with optional tqdm progress."""
     if not shutil.which('ffprobe'):
         print("Error: ffprobe is not installed or not in your PATH.")
         return
@@ -142,6 +144,7 @@ def analyze_audio(path: str, output_stream, show_progress: bool = True):
         print(f"'{path}' is not a file or directory.")
         return
 
+    # Use tqdm if progress is enabled, otherwise plain iteration
     file_iterator = tqdm(audio_files, desc="Analyzing audio") if show_progress else audio_files
 
     for audio_file in file_iterator:
@@ -186,7 +189,7 @@ def analyze_audio(path: str, output_stream, show_progress: bool = True):
             output_stream.write(f"  [ERROR] Failed to analyze: {e}\n")
 
 def main():
-    """Configures and runs subcommands."""
+    """Sets up CLI and runs subcommands."""
     parser = argparse.ArgumentParser(description="Tool for managing audio files")
     subparsers = parser.add_subparsers(dest="command", help="Available commands", required=True)
 
@@ -224,7 +227,7 @@ def main():
             print(f"Analysis complete. Results saved to '{output_file}'")
 
 if __name__ == "__main__":
-    """Runs the script with Ctrl+C handling."""
+    """Runs the script with graceful Ctrl+C handling."""
     try:
         main()
     except KeyboardInterrupt:
