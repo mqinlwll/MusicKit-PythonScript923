@@ -1,139 +1,195 @@
-### Explanation of the Two Scripts
+## Description of the Two Scripts
 
-Both scripts are Python-based command-line tools designed for managing and analyzing audio files. They share similar functionality but differ in their approach to progress feedback and some implementation details. Here's a detailed description of each:
+Both scripts are command-line tools written in Python that provide three main functions for managing audio files:
 
-#### **`audio-script-clean.py`: Custom Progress Bar Version**
-- **Purpose**: This script provides utilities to check audio file integrity, manage cover art files (hide/show), and analyze audio file metadata.
-- **Key Features**:
-  - Uses a custom-built ASCII progress bar (`print_progress_bar`) to show task progress.
-  - Relies solely on standard Python libraries (e.g., `os`, `subprocess`, `argparse`) plus `pathlib` for modern path handling.
-  - Three subcommands: `check`, `cover-art`, and `info`.
-  - Depends on external tools: FFmpeg (`ffmpeg` and `ffprobe`).
-- **Implementation Details**:
-  - Progress feedback is a simple text-based bar (e.g., `[####----] 40% 4/10`).
-  - Error handling is robust, with detailed logging options for integrity checks.
-  - Audio metadata analysis includes codec-specific warnings (e.g., lossy vs. lossless formats).
+1. **Check Audio File Integrity**: Uses FFmpeg to verify if audio files are corrupt or playable.
+2. **Hide or Show Cover Art Files**: Renames cover art files (e.g., `cover.jpg`) by adding or removing a dot prefix to hide or show them.
+3. **Analyze Audio File Metadata**: Uses ffprobe to extract and display metadata such as bitrate, sample rate, and codec.
 
-#### **`audio-script.py`: tqdm Progress Bar Version**
-- **Purpose**: Similar to Script 1, it offers the same audio file utilities: integrity checking, cover art management, and metadata analysis.
-- **Key Features**:
-  - Uses the third-party library `tqdm` for a more sophisticated, dynamic progress bar.
-  - Slightly more concise code due to `tqdm` handling progress updates.
-  - Same three subcommands: `check`, `cover-art`, and `info`.
-  - Also depends on FFmpeg (`ffmpeg` and `ffprobe`).
-- **Implementation Details**:
-  - Progress feedback is richer (e.g., animated bars, precise updates) thanks to `tqdm`.
-  - Default behavior for logging differs slightly: log files are saved unless explicitly overridden with `verbose` and no `--save-log`.
-  - Core logic for audio processing is nearly identical to Script 1.
+The primary difference between the two versions lies in their approach to progress indication:
 
-### Detailed Comparison (Table)
+- **Version 1** uses the `tqdm` library for advanced, feature-rich progress bars.
+- **Version 2** implements a custom ASCII progress bar without external dependencies.
 
-| **Feature/Aspect**            | **`audio-script-clean.py` (Custom Progress Bar)**                              | **`audio-script.py` (tqdm Progress Bar)**                              |
-|-------------------------------|----------------------------------------------------------------|--------------------------------------------------------------|
-| **Progress Feedback**         | Custom ASCII bar (simple, static updates)                     | `tqdm` library (dynamic, animated progress bar)              |
-| **Dependencies**              | Standard libraries only (`os`, `subprocess`, `argparse`, etc.)| Requires `tqdm` (third-party library)                       |
-| **Code Complexity**           | Slightly more verbose due to custom progress bar logic        | More concise due to `tqdm` abstraction                      |
-| **Log File Behavior**         | Saved by default unless `verbose` and no `--save-log`         | Saved by default unless `verbose` without `--save-log`      |
-| **Performance**               | Identical core functionality; no significant difference       | Identical core functionality; `tqdm` may add minor overhead |
-| **Cross-Platform Support**    | Fully cross-platform (Windows, macOS, Linux)                  | Fully cross-platform, assumes `tqdm` is installed           |
-| **External Tool Dependency**  | FFmpeg (`ffmpeg`, `ffprobe`)                                  | FFmpeg (`ffmpeg`, `ffprobe`)                                |
-| **Output File Naming (info)** | Timestamped default: `audio_analysis_YYYYMMDD.txt`            | Same as Script 1                                            |
-| **User Experience**           | Basic but functional progress display                         | Enhanced visual feedback with `tqdm`                        |
+Beyond this, there are minor differences in output handling and code structure, which we'll explore below.
 
-### Setup Guide: Python Environment Cross-Platform
+---
 
-To run either script, you need Python and FFmpeg installed, and for Script 2, the `tqdm` library. Here's a step-by-step guide to set up the environment on Windows, macOS, and Linux:
+## Common Features and Setup
 
-#### **1. Install Python**
-- **Windows**:
-  - Download from [python.org](https://www.python.org/downloads/).
-  - Run the installer, check "Add Python to PATH".
-  - Verify: `python --version` or `python3 --version` in Command Prompt.
-- **macOS**:
-  - Pre-installed on most versions, or install via Homebrew: `brew install python3`.
-  - Verify: `python3 --version` in Terminal.
-- **Linux**:
-  - Usually pre-installed (e.g., Ubuntu: `python3`).
-  - Install if needed: `sudo apt install python3` (Debian/Ubuntu) or `sudo dnf install python3` (Fedora).
-  - Verify: `python3 --version`.
+Before diving into the differences, here’s what both scripts share and how to set them up:
 
-#### **2. Install FFmpeg**
-- **Windows**:
-  - Download from [ffmpeg.org](https://ffmpeg.org/download.html) or use a package manager like Chocolatey: `choco install ffmpeg`.
-  - Add FFmpeg to PATH (edit system environment variables).
-  - Verify: `ffmpeg -version` and `ffprobe -version`.
-- **macOS**:
-  - Install via Homebrew: `brew install ffmpeg`.
-  - Verify: `ffmpeg -version` and `ffprobe -version`.
-- **Linux**:
-  - Install via package manager: `sudo apt install ffmpeg` (Debian/Ubuntu) or `sudo dnf install ffmpeg` (Fedora, with RPM Fusion).
-  - Verify: `ffmpeg -version` and `ffprobe -version`.
+### Prerequisites
+- **Python 3.x**: Ensure Python is installed on your system. You can download it from [python.org](https://www.python.org/downloads/).
+- **FFmpeg and ffprobe**: Both scripts rely on these external tools for audio processing and analysis.
+  - **Windows**: Download from [ffmpeg.org](https://ffmpeg.org/download.html) and add to your PATH.
+  - **macOS**: Install via Homebrew with `brew install ffmpeg`.
+  - **Linux**: Use your package manager, e.g., `sudo apt-get install ffmpeg` on Ubuntu.
+  - Verify installation by running `ffmpeg -version` and `ffprobe -version` in your terminal.
+- **Configuration File**: Both scripts use a JSON file named `audio-script-config.json` to store settings, such as the log folder path. If it doesn’t exist, the script creates it with a default log folder of `"Logs"`.
 
-#### **3. Set Up Virtual Environment (Optional but Recommended)**
-- Create a virtual environment to isolate dependencies:
-  - `python3 -m venv audio_env` (Linux/macOS) or `python -m venv audio_env` (Windows).
-- Activate it:
-  - Windows: `audio_env\Scripts\activate`
-  - Linux/macOS: `source audio_env/bin/activate`
-- Deactivate when done: `deactivate`.
+### Supported Audio Formats
+Both scripts recognize the following audio file extensions:
+- `.flac`, `.wav`, `.m4a`, `.mp3`, `.ogg`, `.opus`, `.ape`, `.wv`, `.wma`
 
-#### **4. Install Dependencies**
-- For **Script 1**: No additional Python packages needed (uses standard libraries).
-- For **Script 2**: Install `tqdm`:
-  - `pip install tqdm` (in the virtual environment if active).
-- Verify: `pip list` should show `tqdm` for Script 2.
+### Command-Line Usage
+Run the scripts from the command line with one of three commands: `check`, `cover-art`, or `info`. Examples:
+- **Integrity Check**: `python script.py check /path/to/audio/files`
+- **Hide Cover Art**: `python script.py cover-art --hide /path/to/directory`
+- **Analyze Metadata**: `python script.py info /path/to/audio/files`
 
-#### **5. Save and Run the Scripts**
-- Save Script 1 as `audio_tool1.py` and Script 2 as `audio_tool2.py`.
-- Run from terminal:
-  - Script 1: `python audio_tool1.py <command> [options]`
-  - Script 2: `python audio_tool2.py <command> [options]`
+Now, let’s examine each version in detail.
 
-### Explanation of Options for Each Subcommand
+---
 
-Both scripts share the same subcommands with similar options. Below is a detailed explanation:
+## Version 1: Using `tqdm` for Progress Bars
 
-#### **1. `check` Subcommand**
-- **Purpose**: Verifies the integrity of audio files using FFmpeg.
-- **Usage**: `<script> check <path> [--verbose] [--save-log]`
-- **Options**:
-  - `path` (required): Path to a file or directory to check.
-    - Example: `audio_tool1.py check ./music_folder`
-  - `--verbose` (optional): Prints results to console; disables progress bar.
-    - Example: `audio_tool1.py check ./music_folder --verbose`
-  - `--save-log` (optional): Saves results to a log file (defaults to enabled in Script 2 unless `verbose` is used without it).
-    - Example: `audio_tool1.py check ./music_folder --verbose --save-log`
-- **Behavior**:
-  - Checks files with extensions: `.flac`, `.wav`, `.m4a`, `.mp3`, `.ogg`, `.opus`, `.ape`, `.wv`, `.wma`.
-  - Outputs "PASSED" or "FAILED" with error details if applicable.
+This version leverages the `tqdm` library to provide a sophisticated progress bar experience.
 
-#### **2. `cover-art` Subcommand**
-- **Purpose**: Hides (adds dot prefix) or shows (removes dot prefix) cover art files (`cover.jpg`, `cover.jpeg`, `cover.png`).
-- **Usage**: `<script> cover-art <path> [--hide | --show]`
-- **Options**:
-  - `path` (required): Directory to process (must exist).
-    - Example: `audio_tool1.py cover-art ./music_folder --hide`
-  - `--hide` (mutually exclusive): Adds a dot (e.g., `.cover.jpg`) to hide files.
-  - `--show` (mutually exclusive): Removes the dot to show files.
-    - Example: `audio_tool1.py cover-art ./music_folder --show`
-- **Behavior**:
-  - Renames files recursively; skips if target name already exists.
+### Key Features
+- **Progress Bars**: Uses `tqdm` to display progress for operations like integrity checks, cover art processing, and metadata analysis. The bar includes percentage complete, file count, and estimated time remaining.
+- **Verbose and Summary Options**:
+  - `--verbose`: Prints detailed results to the console without a progress bar.
+  - `--summary`: Shows a progress bar during processing and a summary at the end (total files, passed, failed).
+- **Log File Handling**: Saves results to a log file in the specified log folder if `--save-log` is used or if neither `--verbose` nor `--summary` is specified for the `check` command.
+- **Output for `info` Command**: Metadata analysis results can be printed to the console with `--verbose` or saved to a file (default: `audio_analysis_YYYYMMDD.txt`).
 
-#### **3. `info` Subcommand**
-- **Purpose**: Analyzes audio file metadata (bitrate, sample rate, etc.) using `ffprobe`.
-- **Usage**: `<script> info <path> [-o OUTPUT] [--verbose]`
-- **Options**:
-  - `path` (required): File or directory to analyze.
-    - Example: `audio_tool1.py info ./song.mp3`
-  - `-o, --output` (optional): Output file name (defaults to `audio_analysis_YYYYMMDD.txt`).
-    - Example: `audio_tool1.py info ./music_folder -o results.txt`
-  - `--verbose` (optional): Prints to console instead of file; disables progress bar.
-    - Example: `audio_tool1.py info ./music_folder --verbose`
-- **Behavior**:
-  - Provides codec, bitrate, sample rate, bit depth, channels, and warnings (e.g., low bit depth).
+### Setup Instructions
+1. **Install Python and FFmpeg**: See the common setup above.
+2. **Install `tqdm`**:
+   - Run the following command in your terminal:
+     ```bash
+     pip install tqdm
+     ```
+   - This adds the `tqdm` library, which is not part of the Python standard library.
+3. **Save the Script**: Copy the code from the first document into a file, e.g., `audio_tool_tqdm.py`.
+4. **Run the Script**: Use the command-line examples provided earlier.
 
-### Summary
-- **`audio-script-clean.py`** is lightweight and dependency-free (beyond FFmpeg), ideal for minimal setups.
-- **`audio-script.py`** offers a better user experience with `tqdm` but requires an extra install.
-- Both are powerful tools for audio file management, with identical core functionality.
+### How to Use
+- **Check Integrity with Progress Bar**:
+  ```bash
+  python audio_tool_tqdm.py check /path/to/audio/files --summary
+  ```
+  - Displays a `tqdm` progress bar and a summary of passed/failed files.
+- **Hide Cover Art**:
+  ```bash
+  python audio_tool_tqdm.py cover-art --hide /path/to/directory
+  ```
+  - Shows a progress bar while renaming cover art files.
+- **Analyze Metadata and Save to File**:
+  ```bash
+  python audio_tool_tqdm.py info /path/to/audio/files
+  ```
+  - Outputs results to a timestamped file (e.g., `audio_analysis_20231015.txt`).
 
+### Output Example
+For `check` with `--summary`:
+```
+Checking files: 100%|██████████| 50/50 [00:05<00:00, 10.00it/s]
+Summary:
+Total files: 50
+Passed: 48
+Failed: 2
+```
+
+### Pros
+- **Rich Progress Bar**: Includes estimated time remaining and a smooth update experience.
+- **Simpler Code**: Relies on `tqdm` to handle progress tracking, reducing custom implementation effort.
+- **User-Friendly**: Ideal for users processing large directories who want detailed feedback.
+
+### Cons
+- **Dependency**: Requires installing `tqdm`, which may not be feasible in restricted environments.
+- **Slight Overhead**: `tqdm` introduces a minimal performance cost.
+
+---
+
+## Version 2: Using Custom ASCII Progress Bar
+
+This version implements a simple ASCII progress bar manually, avoiding external dependencies.
+
+### Key Features
+- **Progress Bars**: Uses a custom `print_progress_bar` function to display a basic ASCII bar showing percentage and file count (e.g., `[#####-----] 50% 25/50`).
+- **Verbose and Summary Options**: Identical to Version 1: `--verbose` for detailed output, `--summary` for progress bar and summary.
+- **Log File Handling**: Same as Version 1—logs are saved if `--save-log` is specified or if no output mode is chosen.
+- **Output for `info` Command**: Matches Version 1, with results to console via `--verbose` or to a file (default: `audio_analysis_YYYYMMDD.txt`).
+
+### Setup Instructions
+1. **Install Python and FFmpeg**: See the common setup above.
+2. **No Additional Libraries**: Unlike Version 1, no extra installations are needed beyond Python and FFmpeg.
+3. **Save the Script**: Copy the code from the second document into a file, e.g., `audio_tool_ascii.py`.
+4. **Run the Script**: Use the same command-line syntax as Version 1.
+
+### How to Use
+- **Check Integrity with Progress Bar**:
+  ```bash
+  python audio_tool_ascii.py check /path/to/audio/files --summary
+  ```
+  - Shows a custom ASCII bar and a summary.
+- **Show Cover Art**:
+  ```bash
+  python audio_tool_ascii.py cover-art --show /path/to/directory
+  ```
+  - Displays progress while renaming files.
+- **Analyze Metadata with Verbose Output**:
+  ```bash
+  python audio_tool_ascii.py info /path/to/audio/files --verbose
+  ```
+  - Prints metadata directly to the console.
+
+### Output Example
+For `check` with `--summary`:
+```
+Checking files [####################--------------------] 50% 25/50
+Checking files [########################################] 100% 50/50
+Summary:
+Total files: 50
+Passed: 48
+Failed: 2
+```
+
+### Pros
+- **No Dependencies**: Runs with just Python and FFmpeg, making it highly portable.
+- **Lightweight**: Avoids any overhead from external libraries.
+- **Simple**: Sufficient for basic progress tracking needs.
+
+### Cons
+- **Basic Progress Bar**: Lacks advanced features like estimated time remaining.
+- **More Code**: Requires maintaining a custom progress bar implementation.
+
+---
+
+## Table of Differences
+
+| **Feature**                      | **Version 1 (tqdm)**                                                                 | **Version 2 (Custom ASCII)**                                                  |
+|----------------------------------|-------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| **Progress Bar Implementation**  | Uses `tqdm` library for advanced progress bars.                                     | Uses custom `print_progress_bar` function for a simple ASCII bar.             |
+| **Dependencies**                 | Requires `tqdm` (`pip install tqdm`).                                               | No additional dependencies beyond Python and FFmpeg/ffprobe.                   |
+| **Progress Bar Features**        | Percentage, file count, estimated time remaining, smooth updates.                    | Percentage and file count only, basic `#` and `-` bar.                         |
+| **Performance**                  | Minimal overhead from `tqdm`.                                                       | No overhead from external libraries.                                           |
+| **Code Complexity**              | Simpler due to `tqdm` handling progress logic.                                      | Slightly more complex with custom progress bar code.                           |
+| **Setup Effort**                 | Requires installing `tqdm`.                                                         | No extra setup beyond Python and FFmpeg.                                       |
+| **Use Case**                     | Ideal for detailed progress tracking and large tasks.                               | Suitable for dependency-free environments or simpler needs.                    |
+
+---
+
+## How to Choose Between Them
+
+- **Choose Version 1 (tqdm)** if:
+  - You want a detailed progress bar with estimated time remaining.
+  - You’re comfortable installing `tqdm` via pip.
+  - You’re processing large directories and need better feedback.
+
+- **Choose Version 2 (Custom ASCII)** if:
+  - You prefer a script with no external dependencies.
+  - A basic progress bar meets your needs.
+  - You’re in an environment where installing libraries is restricted.
+
+Both scripts are robust and well-designed, so your choice depends on your priorities regarding dependencies, progress bar features, and setup simplicity.
+
+---
+
+## Additional Notes
+
+- **Error Handling**: Both versions check for FFmpeg/ffprobe availability and validate input paths, exiting gracefully with error messages if requirements aren’t met.
+- **Customizing the Log Folder**: Edit `audio-script-config.json` to change the `"log_folder"` value. Ensure the script has write permissions for that location.
+- **Extending Functionality**: To support more audio formats, add extensions to the `AUDIO_EXTENSIONS` list. For additional metadata, modify the `analyze_audio` function.
